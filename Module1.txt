@@ -1,0 +1,80 @@
+Public CalendarModified As Boolean
+
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+Sub CopyCalendarColumnsToMonthsWithCustomFormat()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    MsgBox "Updating all Sheets of this excel!"
+    
+    Dim i As Integer
+    Dim row As Integer
+    Dim targetSheet As Worksheet
+    Dim sourceSheet As Worksheet
+    
+    ' Set the Calendar sheet as the source sheet
+    Set sourceSheet = Sheets("Calendar")
+    
+    ' Array of month sheet names (Jan to Dec)
+    Dim monthNames As Variant
+    monthNames = Array("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    
+    ' Loop through the 12 columns in Calendar sheet (B to M)
+    For i = 1 To 12
+        ' Set the target sheet based on the month name
+        Set targetSheet = Sheets(monthNames(i - 1))
+        
+        ' Loop through rows 3 to 33 in Calendar sheet and rows 2 to 32 in the target sheet
+        For row = 3 To 33
+            ' Copy the value from Calendar to the corresponding month sheet's G column (column 7)
+            targetSheet.Cells(row - 1, 7).Value = sourceSheet.Cells(row, i + 1).Value ' Copy value to G column
+            
+            ' Copy the background color from Calendar to the corresponding month sheet
+            targetSheet.Cells(row - 1, 7).Interior.Color = sourceSheet.Cells(row, i + 1).Interior.Color ' Copy background color
+            
+            ' Copy the font color from Calendar to the corresponding month sheet
+            targetSheet.Cells(row - 1, 7).Font.Color = sourceSheet.Cells(row, i + 1).Font.Color ' Copy font color
+            
+            ' Copy the horizontal alignment from Calendar to the corresponding month sheet
+            targetSheet.Cells(row - 1, 7).HorizontalAlignment = sourceSheet.Cells(row, i + 1).HorizontalAlignment ' Copy horizontal alignment
+            
+            ' Copy the vertical alignment from Calendar to the corresponding month sheet
+            targetSheet.Cells(row - 1, 7).VerticalAlignment = sourceSheet.Cells(row, i + 1).VerticalAlignment ' Copy vertical alignment
+            
+            ' Copy font bold property from Calendar to the corresponding month sheet
+            targetSheet.Cells(row - 1, 7).Font.Bold = sourceSheet.Cells(row, i + 1).Font.Bold ' Copy bold property
+            
+            ' Check if the cell in B to M (i+1 column) is not empty
+            If sourceSheet.Cells(row, i + 1).Value <> "" Then
+                ' If not empty, copy the corresponding date from A3:A33 to F2:F32
+                targetSheet.Cells(row - 1, 6).Value = sourceSheet.Cells(row, 1).Value ' Copy date to F column
+                
+                ' Copy the format of the date from A3:A33 to F2:F32
+                targetSheet.Cells(row - 1, 6).Interior.Color = sourceSheet.Cells(row, 1).Interior.Color ' Copy background color for date
+                targetSheet.Cells(row - 1, 6).Font.Color = sourceSheet.Cells(row, 1).Font.Color ' Copy font color for date
+                targetSheet.Cells(row - 1, 6).HorizontalAlignment = sourceSheet.Cells(row, 1).HorizontalAlignment ' Copy horizontal alignment for date
+                targetSheet.Cells(row - 1, 6).VerticalAlignment = sourceSheet.Cells(row, 1).VerticalAlignment ' Copy vertical alignment for date
+                targetSheet.Cells(row - 1, 6).Font.Bold = sourceSheet.Cells(row, 1).Font.Bold ' Copy bold property for date
+                
+                ' Copy the custom number format (e.g., ddd format for dates)
+                targetSheet.Cells(row - 1, 6).NumberFormat = sourceSheet.Cells(row, 1).NumberFormat ' Copy custom number format (like ddd)
+            Else
+                ' If empty, clear the corresponding F column cell (date)
+                targetSheet.Cells(row - 1, 6).ClearContents
+                ' Clear the formatting for the empty date cell
+                targetSheet.Cells(row - 1, 6).Interior.ColorIndex = xlNone ' Clear background color
+                targetSheet.Cells(row - 1, 6).Font.ColorIndex = xlAutomatic ' Reset font color to automatic
+                targetSheet.Cells(row - 1, 6).HorizontalAlignment = xlGeneral ' Reset horizontal alignment
+                targetSheet.Cells(row - 1, 6).VerticalAlignment = xlCenter ' Reset vertical alignment
+                targetSheet.Cells(row - 1, 6).Font.Bold = False ' Reset bold formatting
+                targetSheet.Cells(row - 1, 6).NumberFormat = "General" ' Reset to general format
+            End If
+        Next row
+    Next i
+    
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+
+
+

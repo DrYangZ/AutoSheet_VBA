@@ -1,0 +1,9 @@
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+Private Sub Worksheet_Change(ByVal Target As Range)
+    MsgBox "Changed Cell: " & Target.Address
+    CalendarModified = True
+    If CalendarModified = True Then
+        MsgBox "Calendar Modified!"
+    End If
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>

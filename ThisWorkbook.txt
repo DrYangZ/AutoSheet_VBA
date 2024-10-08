@@ -1,0 +1,14 @@
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+Private Sub Workbook_SheetDeactivate(ByVal Sh As Object)
+    If Sh.Name = "Calendar" Then
+        MsgBox "Leaving Calendar Sheet" ' Print the msg
+        If CalendarModified = True Then
+            MsgBox "Executing CopyCalendarColumnsToMonthsWithCustomFormat Macro"
+            Call CopyCalendarColumnsToMonthsWithCustomFormat
+            CalendarModified = False
+        Else
+            MsgBox "No changes detected in Calendar"
+        End If
+    End If
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>

@@ -1,0 +1,157 @@
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+Function IsTimeFormat(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim dt As Date
+    dt = CDate(cellValue)
+    IsTimeFormat = (Err = 0) And (dt >= #12:00:00 AM#) And (dt < #12:00:00 PM#)
+    On Error GoTo 0
+End Function
+
+Function IsNumberInRange(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim num As Double
+    num = CDbl(cellValue)
+    IsNumberInRange = (Err = 0) And (num >= 1) And (num <= 24)
+    On Error GoTo 0
+End Function
+
+Function IsSpecialValue(cellValue As String, specialValues() As Variant) As Boolean
+    Dim i As Integer
+    For i = LBound(specialValues) To UBound(specialValues)
+        If Trim(cellValue) = Trim(specialValues(i)) Then
+            IsSpecialValue = True
+            Exit Function
+        End If
+    Next i
+    IsSpecialValue = False
+End Function
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    Dim cell As Range
+    Dim specialValues() As Variant
+    Dim i As Integer
+    
+    On Error GoTo ErrorHandler
+    
+    Application.EnableEvents = False
+        
+    specialValues = Array("Weekend", "Public holiday", "Annual leave/Full paid sick leave/Special leave")
+    
+    If Not Intersect(Target, Me.Range("K2:K32")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If IsSpecialValue(Target.Value, specialValues) Then
+                Target.Offset(0, -3).ClearContents
+                Target.Offset(0, -2).ClearContents
+                Target.Offset(0, -1).ClearContents
+                Target.Offset(0, 1).ClearContents
+            Else
+                MsgBox "Please select the corresponding remark via data validation!"
+                Exit Sub
+                Application.EnableEvents = True
+            End If
+        End If
+        
+    ElseIf Not Intersect(Target, Me.Range("H2:H32")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsTimeFormat(Target.Value) Then
+                MsgBox "When entering the time, please input the correct format and adjust the input method to English mode!"
+                Target.ClearContents
+                On Error GoTo 0
+                Application.EnableEvents = True
+                Exit Sub
+            End If
+        End If
+        If Target.Cells.Count = 1 Then
+            If IsSpecialValue(Target.Offset(0, 3).Value, specialValues) Then
+                MsgBox "No work on " & Target.Offset(0, 3).Value & "!!!"
+                cell.ClearContents
+            ElseIf Target.Offset(0, 3).Value = "" Then
+                MsgBox "Please choose the remark of this date!!!"
+                Target.Offset(0, 1).ClearContents
+                Target.ClearContents
+            End If
+            Target.Offset(0, 2).Value = (Target.Offset(0, 1).Value - Target.Value) * 24
+            If Target.Offset(0, 2).Value >= 9 Then
+                Target.Offset(0, 4).Value = 1
+            Else
+                Target.Offset(0, 4).Value = 0
+            End If
+        End If
+        
+    ElseIf Not Intersect(Target, Me.Range("I2:I32")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsTimeFormat(Target.Value) Then
+                MsgBox "When entering the time, please input the correct format and adjust the input method to English mode!"
+                Target.ClearContents
+                On Error GoTo 0
+                Application.EnableEvents = True
+                Exit Sub
+            End If
+        End If
+        If Target.Cells.Count = 1 Then
+            If IsSpecialValue(Target.Offset(0, 2).Value, specialValues) Then
+                MsgBox "No work on " & Target.Offset(0, 2).Value & "!!!"
+                cell.ClearContents
+            ElseIf Target.Offset(0, 2).Value = "" Then
+                MsgBox "Please choose the remark of this date!!!"
+                Target.Offset(0, -1).ClearContents
+                Target.ClearContents
+            End If
+            Target.Offset(0, 1).Value = (Target.Value - Target.Offset(0, -1).Value) * 24
+            If Target.Offset(0, 1).Value >= 9 Then
+                Target.Offset(0, 3).Value = 1
+            Else
+                Target.Offset(0, 3).Value = 0
+            End If
+        End If
+
+    ElseIf Not Intersect(Target, Me.Range("B8")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsNumberInRange(Target.Value) Then
+                MsgBox "Please enter a NUMBER between 1 and 24 in your Contract-Working-Hours/day Cell!"
+                Target.Value = 0
+                On Error GoTo 0
+                Application.EnableEvents = True
+                Exit Sub
+            End If
+        End If
+    End If
+    
+    If Range("B8").Value = "" Then
+        MsgBox "Please input your Contract Working Hours per day"
+        Application.EnableEvents = True
+        Exit Sub
+    ElseIf Not IsNumeric(Range("B8").Value) Then
+        Range("B8").ClearContents
+        MsgBox "Please enter a NUMBER in your Contract-Working-Hours/day Cell"
+    Else
+        Range("J33").Value = Application.WorksheetFunction.Sum(Range("J2:J32"))
+        Range("L33").Value = Application.WorksheetFunction.Sum(Range("L2:L32"))
+        Range("J34").Value = Range("J33").Value - Range("L33").Value
+        Range("H35").Value = Application.WorksheetFunction.CountIf(Range("K2:K32"), "*Annual leave/Full paid sick leave/Special leave*")
+        Range("J35").Value = Range("H35").Value * Range("B8").Value
+        Range("H37").Value = Application.WorksheetFunction.CountIf(Range("K2:K32"), "*Working day*") + _
+                             Application.WorksheetFunction.CountIf(Range("K2:K32"), "*VGC 1/2 -DAY*") * 0.5
+        Range("L34").Value = Range("J34").Value - Range("H37").Value * Range("B8").Value
+        Range("J36").Value = Range("J34").Value + Range("J35").Value
+        Range("J37").Value = Range("H37").Value / 5
+        If Range("J37").Value = 0 Or Range("J37").Value = "" Then
+            Range("L37").Value = 0
+        Else
+            Range("L37").Value = Range("J36").Value / Range("J37").Value
+        End If
+    End If
+    Application.EnableEvents = True
+    Exit Sub
+
+ErrorHandler:
+    Range("L33").ClearContents
+    MsgBox "You might have entered an incorrect value in Cell:" & Target.Address
+    MsgBox ErrorMessage, vbExclamation, "Input Error"
+    Application.EnableEvents = True
+    Resume Next
+    
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+
+
