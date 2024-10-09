@@ -27,14 +27,18 @@ Function IsSpecialValue(cellValue As String, specialValues() As Variant) As Bool
 End Function
 
 Private Sub Worksheet_Change(ByVal Target As Range)
+    Dim ws As Worksheet
     Dim cell As Range
     Dim specialValues() As Variant
     Dim i As Integer
     
     On Error GoTo ErrorHandler
     
+    Set ws = ThisWorkbook.Sheets("Dec")
+    ws.Unprotect "123456"
+    Debug.Print "Protection removed."
     Application.EnableEvents = False
-        
+    
     specialValues = Array("Weekend", "Public holiday", "Annual leave/Full paid sick leave/Special leave")
     
     If Not Intersect(Target, Me.Range("K2:K32")) Is Nothing Then
@@ -44,10 +48,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Target.Offset(0, -2).ClearContents
                 Target.Offset(0, -1).ClearContents
                 Target.Offset(0, 1).ClearContents
-            Else
-                MsgBox "Please select the corresponding remark via data validation!"
-                Exit Sub
-                Application.EnableEvents = True
             End If
         End If
         
@@ -58,6 +58,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Target.ClearContents
                 On Error GoTo 0
                 Application.EnableEvents = True
+                ws.Protect "123456", UserInterfaceOnly:=True
                 Exit Sub
             End If
         End If
@@ -85,6 +86,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Target.ClearContents
                 On Error GoTo 0
                 Application.EnableEvents = True
+                ws.Protect "123456", UserInterfaceOnly:=True
                 Exit Sub
             End If
         End If
@@ -112,6 +114,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                 Target.Value = 0
                 On Error GoTo 0
                 Application.EnableEvents = True
+                ws.Protect "123456", UserInterfaceOnly:=True
                 Exit Sub
             End If
         End If
@@ -120,6 +123,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Range("B8").Value = "" Then
         MsgBox "Please input your Contract Working Hours per day"
         Application.EnableEvents = True
+        ws.Protect "123456", UserInterfaceOnly:=True
         Exit Sub
     ElseIf Not IsNumeric(Range("B8").Value) Then
         Range("B8").ClearContents
@@ -142,15 +146,21 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         End If
     End If
     Application.EnableEvents = True
+    ws.Protect "123456", UserInterfaceOnly:=True
+    Debug.Print "Protection reapplied."
     Exit Sub
 
 ErrorHandler:
+    ws.Unprotect "123456"
+    Debug.Print "Protection removed."
     Range("L33").ClearContents
     MsgBox "You might have entered an incorrect value in Cell:" & Target.Address
     MsgBox ErrorMessage, vbExclamation, "Input Error"
     Application.EnableEvents = True
+    ws.Protect "123456", UserInterfaceOnly:=True
+    Debug.Print "Protection reapplied."
     Resume Next
-    
+
 End Sub
 ' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
 
