@@ -1,0 +1,77 @@
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+
+Private Sub GetDateofCurrentYear_Click()
+    Call FillWeekdays
+End Sub
+
+Private Sub UpdateAllSheets_Click()
+    Call CopyCalendarColumnsToMonthsWithCustomFormat
+End Sub
+
+Function IsValue05Or1(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim num As Double
+    num = CDbl(cellValue)
+    IsValue05Or1 = (Err = 0) And (num = 0.5 Or num = 1)
+    On Error GoTo 0
+End Function
+
+Function IsValue40Or44Or48(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim num As Double
+    num = CDbl(cellValue)
+    IsValue40Or44Or48 = (Err = 0) And (num = 40 Or num = 44 Or num = 48)
+    On Error GoTo 0
+End Function
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    Dim ws As Worksheet
+    Dim cell As Range
+    
+    'On Error GoTo ErrorHandler
+    Set ws = ThisWorkbook.Sheets("Calendar")
+    Application.EnableEvents = False
+    'ws.Protect Password:="123456", UserInterfaceOnly:=True
+    
+    If Not Intersect(Target, Me.Range("O15")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsValue05Or1(Target.Value) Then
+                MsgBox "Please enter 1 or 0.5 in your ContractLunchBreakHour Cell!"
+                Target.Value = 0
+                'On Error GoTo 0
+                Application.EnableEvents = True
+                'Exit Sub
+            End If
+        End If
+        
+    ElseIf Not Intersect(Target, Me.Range("O16")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsValue40Or44Or48(Target.Value) Then
+                MsgBox "Please enter 40 or 44 or 48 in your ContractWorkingHours/week Cell!"
+                Target.Value = 0
+                Target.Offset(1, 0).Value = 0
+                'On Error GoTo 0
+                Application.EnableEvents = True
+                'Exit Sub
+            End If
+        End If
+    End If
+    
+    If ws.Range("O16").Value = "" Then
+        ws.Range("O17").Value = ""
+        Application.EnableEvents = True
+    Else
+        ws.Range("O17").Value = Me.Range("O16").Value / 5
+        Application.EnableEvents = True
+        
+    Application.EnableEvents = True
+    End If
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "You might have entered an incorrect value in Cell:" & Target.Address
+    MsgBox ErrorMessage, vbExclamation, "Input Error"
+    Application.EnableEvents = True
+    ws.Protect "123456", UserInterfaceOnly:=True
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>

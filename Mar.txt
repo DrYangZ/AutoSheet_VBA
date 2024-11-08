@@ -1,0 +1,426 @@
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+Function IsTimeFormat(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim dt As Date
+    dt = CDate(cellValue)
+    IsTimeFormat = (Err = 0) And (dt >= #12:00:00 AM#) And (dt < #12:00:00 PM# * 2)
+    On Error GoTo 0
+End Function
+
+Function IsValue05Or1(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim num As Double
+    num = CDbl(cellValue)
+    IsValue05Or1 = (Err = 0) And (num = 0.5 Or num = 1)
+    On Error GoTo 0
+End Function
+
+Function IsValue40Or44Or48(cellValue As String) As Boolean
+    On Error Resume Next
+    Dim num As Double
+    num = CDbl(cellValue)
+    IsValue40Or44Or48 = (Err = 0) And (num = 40 Or num = 44 Or num = 48)
+    On Error GoTo 0
+End Function
+
+Function IsSpecialValue(cellValue As String, specialValues() As Variant) As Boolean
+    Dim i As Integer
+    For i = LBound(specialValues) To UBound(specialValues)
+        If Trim(cellValue) = Trim(specialValues(i)) Then
+            IsSpecialValue = True
+            Exit Function
+        End If
+    Next i
+    IsSpecialValue = False
+End Function
+
+Function TimeTransformer(timevalue As Double, ws As Worksheet) As String
+    Dim TimeHour As Double
+    Dim hours As Integer
+    Dim minutes As Integer
+    
+    If timevalue = 0 Then
+        TimeTransformer = 0
+    Else
+        TimeHour = timevalue * 24
+        hours = Int(TimeHour)
+        minutes = (TimeHour - hours) * 60
+        If minutes = 60 Then
+            minutes = 0
+            hours = hours + 1
+        End If
+        TimeTransformer = Format(hours, "[h]") & ":" & Format(minutes, "00")
+    End If
+    
+End Function
+
+Sub ProcessContractHours(ws As Worksheet)
+    Dim totalRegularHours As Double
+    Dim totalLeaveHours As Double
+    Dim totalDifference As Double
+    Dim annualLeaveCount As Long
+    Dim workingDaysCount As Double
+    Dim overTimeHour As Double
+    Dim averageWorkingHours As Double
+    Dim showOrNot As Boolean
+    Dim cell As Range
+    
+    'Check if the contract hours cell is empty
+    If ws.Range("B8").Value = "" Then
+        ws.Range("B8").Value = 0
+        For Each cell In ws.Range("K2:K32")
+            If cell.Value * 24 > 6 Then
+                cell.Offset(0, 1).Value = ws.Range("B8") / 24
+            ElseIf cell.Value = "" Then
+                cell.Offset(0, 1).Value = ""
+            Else
+                cell.Offset(0, 1).Value = 0
+            End If
+        Next cell
+        'MsgBox "The sheet operating now is " & ActiveSheet.Name
+        'MsgBox "Please input your ContractLunchBreakHour!!!"
+        Application.EnableEvents = True
+    ElseIf ws.Range("B9").Value = "" Then
+        ws.Range("B9").Value = 0
+        ws.Range("B10").Value = 0
+        'MsgBox "The sheet operating now is " & ActiveSheet.Name
+        'MsgBox "Please input your ContractWorkingHours/week!!!"
+        Application.EnableEvents = True
+    ElseIf Not IsNumeric(ws.Range("B8").Value) Then
+        ws.Range("B8").Value = 0
+        'MsgBox "Please enter a NUMBER in your ContractLunchBreakHour Cell"
+    ElseIf Not IsNumeric(ws.Range("B9").Value) Then
+        ws.Range("B9").Value = 0
+        ws.Range("B10").Value = 0
+        'MsgBox "Please enter a NUMBER in your ContractWorkingHours/week Cell"
+    End If
+    ' Calculate totals
+    ws.Range("K33").Value = Application.WorksheetFunction.Sum(ws.Range("K2:K32"))
+    ws.Range("K35").Value = Application.WorksheetFunction.Sum(ws.Range("L2:L32"))
+    ws.Range("K37").Value = ws.Range("K33").Value - ws.Range("K35").Value
+    
+    ' Count Annual Leave occurrences
+    PaidLeaveCount = Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "Annual leave/Full paid sick leave/Special leave") + _
+                     Application.WorksheetFunction.SumProduct(Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "1/2 Sick leave"), 0.5) + _
+                     Application.WorksheetFunction.SumProduct(Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "1/2 Annual leave"), 0.5) + _
+                     Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "VGC 1/2 -DAY and 1/2 Annual leave") * 0.5 + _
+                     Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "VGC 1/2 -DAY and 1/2 Sick leave") * 0.5
+    ws.Range("H33").Value = PaidLeaveCount
+    ws.Range("N33").Value = PaidLeaveCount * ws.Range("B10").Value / 24
+    
+    ' Count Working Days and adjust for half days
+    workingDaysCount = Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "Working day") + _
+                       Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "VGC 1/2 -DAY") * 0.5 + _
+                       Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "1/2 Sick leave") * 0.5 + _
+                       Application.WorksheetFunction.CountIf(ws.Range("H2:H32"), "1/2 Annual leave") * 0.5
+    ws.Range("H37").Value = workingDaysCount
+    
+    ' Calculate adjusted difference
+    overTimeHour = ws.Range("K37").Value - (workingDaysCount * ws.Range("B10").Value / 24)
+    ws.Range("N37").Value = TimeTransformer(overTimeHour, ws)
+    
+    ' Calculate Total Hours including leaves
+    ws.Range("N35").Value = ws.Range("N33").Value + ws.Range("K37").Value
+    
+    showOrNot = False
+    For Each cell In ws.Range("G2:G32")
+        If cell.Interior.Color = RGB(255, 255, 255) Or cell.Interior.Color = RGB(255, 192, 0) Then
+            If cell.Offset(0, 1).Value = "" And cell.Offset(0, -1).Value <> "" Then
+                showOrNot = True
+                Exit For
+            End If
+        End If
+    Next cell
+    
+    If showOrNot Then
+        ws.Range("K39").Font.Color = RGB(191, 191, 191)
+        ws.Range("N39").Font.Color = RGB(191, 191, 191)
+    Else
+        ws.Range("K39").Font.Color = RGB(0, 0, 0)
+        ws.Range("N39").Font.Color = RGB(0, 0, 0)
+        ' Calculate Total woking weeks
+        ws.Range("K39").Value = workingDaysCount / 5
+        If ws.Range("K39").Value = 0 Then
+            averageWorkingHours = 0
+            ws.Range("N39").Value = averageWorkingHours
+        Else
+            averageWorkingHours = ws.Range("K37").Value / ws.Range("K39").Value
+            ws.Range("N39").Value = TimeTransformer(averageWorkingHours, ws)
+        End If
+    End If
+End Sub
+
+Function processColumnH(Target As Range, specialValues() As Variant)
+    Dim cell As Range
+    
+    For Each cell In Target
+        If IsSpecialValue(cell.Value, specialValues) Then
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            cell.Offset(0, 3).ClearContents
+            cell.Offset(0, 4).ClearContents
+        ElseIf cell.Value = "" Then
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            cell.Offset(0, 3).ClearContents
+            cell.Offset(0, 4).ClearContents
+        ElseIf cell.Offset(0, -2) = "" Then
+            cell.ClearContents
+        End If
+    Next cell
+    
+End Function
+
+Function processColumnI(Target As Range, ws As Worksheet, specialValues() As Variant)
+    Dim cell As Range
+    Dim actualAttendanceHour As Double
+    
+    For Each cell In Target
+        If IsSpecialValue(cell.Offset(0, -1).Value, specialValues) Then
+            'MsgBox "No work on " & cell.Offset(0, -1).Value & "!!!"
+            cell.ClearContents
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            cell.Offset(0, 3).ClearContents
+            ProcessContractHours ws
+            'On Error GoTo 0
+            Application.EnableEvents = True
+        ElseIf cell.Offset(0, -1).Value = "" Then
+            'MsgBox "Please choose the remark of this date!!!"
+            cell.ClearContents
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            cell.Offset(0, 3).ClearContents
+            ProcessContractHours ws
+            'On Error GoTo 0
+            Application.EnableEvents = True
+        ElseIf Not IsTimeFormat(cell.Value) Then
+            'MsgBox "When entering the time, please input the correct format and adjust the input method to English mode!"
+            cell.ClearContents
+            cell.Offset(0, 2).ClearContents
+            cell.Offset(0, 3).ClearContents
+            ProcessContractHours ws
+            'On Error GoTo 0
+            Application.EnableEvents = True
+        End If
+        If cell.Value <> "" And cell.Offset(0, 1).Value <> "" Then
+            If cell.Offset(0, 1).Value < cell.Value Then
+                If (cell.Offset(0, 1).Value + 1 - cell.Value) * 24 - ws.Range("B8") <= 11.001 Then
+                    actualAttendanceHour = cell.Offset(0, 1).Value + 1 - cell.Value
+                    cell.Offset(0, 2).Value = actualAttendanceHour
+                Else
+                    MsgBox "You can'y work more than 11 hours a day!"
+                    cell.ClearContents
+                    cell.Offset(0, 2).ClearContents
+                End If
+            ElseIf cell.Offset(0, 1).Value = cell.Value Then
+                MsgBox "You didn't work today!"
+                cell.ClearContents
+                cell.Offset(0, 2).ClearContents
+            ElseIf cell.Offset(0, 1).Value > cell.Value And _
+            (cell.Offset(0, 1).Value - cell.Value) * 24 - ws.Range("B8") <= 11.001 Then
+                actualAttendanceHour = cell.Offset(0, 1).Value - cell.Value
+                cell.Offset(0, 2).Value = actualAttendanceHour
+            Else
+                MsgBox "You can'y work more than 11 hours a day!"
+                cell.ClearContents
+                cell.Offset(0, 2).ClearContents
+            End If
+            If cell.Offset(0, 2).Value * 24 > 6 Then
+                cell.Offset(0, 3).Value = ws.Range("B8").Value / 24
+            ElseIf cell.Offset(0, 2).Value = "" Then
+                cell.Offset(0, 3).ClearContents
+            Else
+                cell.Offset(0, 3).Value = 0
+            End If
+        Else
+            cell.Offset(0, 2).ClearContents
+            cell.Offset(0, 3).ClearContents
+        End If
+    Next cell
+    
+End Function
+
+Function processColumnJ(Target As Range, ws As Worksheet, specialValues() As Variant)
+    Dim cell As Range
+    Dim actualAttendanceHour As Double
+    
+    For Each cell In Target
+        If IsSpecialValue(cell.Offset(0, -2).Value, specialValues) Then
+            'MsgBox "No work on " & cell.Offset(0, -2).Value & "!!!"
+            cell.ClearContents
+            cell.Offset(0, -1).ClearContents
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            ProcessContractHours ws
+            'On Error GoTo 0
+            Application.EnableEvents = True
+        ElseIf cell.Offset(0, -2).Value = "" Then
+            'MsgBox "Please choose the remark of this date!!!"
+            cell.ClearContents
+            cell.Offset(0, -1).ClearContents
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            ProcessContractHours ws
+            'On Error GoTo 0
+            Application.EnableEvents = True
+        ElseIf Not IsTimeFormat(cell.Value) Then
+            MsgBox "When entering the time, please input the correct format and adjust the input method to English mode!"
+            cell.ClearContents
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+            ProcessContractHours ws
+            'On Error GoTo 0
+            Application.EnableEvents = True
+        End If
+        If cell.Value <> "" And cell.Offset(0, -1).Value <> "" Then
+            If cell.Value < cell.Offset(0, -1).Value Then
+                If (cell.Value + 1 - cell.Offset(0, -1).Value) * 24 - ws.Range("B8") <= 11.001 Then
+                    actualAttendanceHour = cell.Value + 1 - cell.Offset(0, -1).Value
+                    cell.Offset(0, 1).Value = actualAttendanceHour
+                Else
+                    MsgBox "You can't work more than 11 hours a day!"
+                    cell.ClearContents
+                    cell.Offset(0, 1).ClearContents
+                End If
+            ElseIf cell.Value = cell.Offset(0, -1).Value Then
+                MsgBox "You didn't work today!"
+                cell.ClearContents
+                cell.Offset(0, 1).ClearContents
+            ElseIf cell.Value > cell.Offset(0, -1).Value And _
+            (cell.Value - cell.Offset(0, -1).Value) * 24 - ws.Range("B8") <= 11.001 Then
+                actualAttendanceHour = cell.Value - cell.Offset(0, -1).Value
+                cell.Offset(0, 1).Value = actualAttendanceHour
+            Else
+                MsgBox "You can'y work more than 11 hours a day!"
+                cell.ClearContents
+                cell.Offset(0, 1).ClearContents
+            End If
+            If cell.Offset(0, 1).Value * 24 > 6 Then
+                cell.Offset(0, 2).Value = ws.Range("B8").Value / 24
+            ElseIf cell.Offset(0, 1).Value = "" Then
+                cell.Offset(0, 2).ClearContents
+            Else
+                cell.Offset(0, 2).Value = 0
+            End If
+        Else
+            cell.Offset(0, 1).ClearContents
+            cell.Offset(0, 2).ClearContents
+        End If
+    Next cell
+    
+End Function
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    Dim ws As Worksheet
+    Dim cell As Range
+    Dim specialValues() As Variant
+    Dim validationList() As Variant
+    Dim i As Integer
+    Dim actualAttendanceHour As Double
+    
+    On Error GoTo ErrorHandler
+    
+    Set ws = ThisWorkbook.Sheets("Mar")
+    Debug.Print "Protection removed."
+    Application.EnableEvents = False
+    ws.Protect Password:="123456", UserInterfaceOnly:=True
+    'MsgBox "The sheet operating now is " & ActiveSheet.Name
+    
+    specialValues = Array("Weekend", _
+                          "Public holiday", _
+                          "Annual leave/Full paid sick leave/Special leave", _
+                          "VGC 1/2 -DAY and 1/2 Sick leave", _
+                          "VGC 1/2 -DAY and 1/2 Annual leave")
+
+    If Not Intersect(Target, ws.Range("H2:H32")) Is Nothing And _
+    Not Intersect(Target, ws.Range("I2:I32")) Is Nothing And _
+    Not Intersect(Target, ws.Range("J2:J32")) Is Nothing Then
+        For Each cell In Target
+            'MsgBox "Now operating " & cell.Address
+            If Not Intersect(cell, ws.Range("H2:H32")) Is Nothing Then
+                processColumnH cell, specialValues
+            ElseIf Not Intersect(cell, ws.Range("I2:I32")) Is Nothing Then
+                processColumnI cell, ws, specialValues
+            ElseIf Not Intersect(cell, ws.Range("J2:J32")) Is Nothing Then
+                processColumnJ cell, ws, specialValues
+            End If
+        Next cell
+        
+    ElseIf Not Intersect(Target, ws.Range("H2:H32")) Is Nothing And _
+    Not Intersect(Target, ws.Range("I2:I32")) Is Nothing Then
+        For Each cell In Target
+            'MsgBox "Now operating " & cell.Address
+            If Not Intersect(cell, ws.Range("H2:H32")) Is Nothing Then
+                processColumnH cell, specialValues
+            ElseIf Not Intersect(cell, ws.Range("I2:I32")) Is Nothing Then
+                processColumnI cell, ws, specialValues
+            End If
+        Next cell
+        
+    ElseIf Not Intersect(Target, ws.Range("I2:I32")) Is Nothing And _
+    Not Intersect(Target, ws.Range("J2:J32")) Is Nothing Then
+        For Each cell In Target
+            'MsgBox "Now operating " & cell.Address
+            If Not Intersect(cell, ws.Range("I2:I32")) Is Nothing Then
+                processColumnI cell, ws, specialValues
+            ElseIf Not Intersect(cell, ws.Range("J2:J32")) Is Nothing Then
+                processColumnJ cell, ws, specialValues
+            End If
+        Next cell
+        
+    ElseIf Not Intersect(Target, ws.Range("H2:H32")) Is Nothing Then
+        processColumnH Target, specialValues
+        
+    ElseIf Not Intersect(Target, ws.Range("I2:I32")) Is Nothing Then
+        processColumnI Target, ws, specialValues
+        
+    ElseIf Not Intersect(Target, ws.Range("J2:J32")) Is Nothing Then
+        processColumnJ Target, ws, specialValues
+
+    ElseIf Not Intersect(Target, ws.Range("B8")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsValue05Or1(Target.Value) Then
+                'MsgBox "Please enter 1 or 0.5 in your ContractLunchBreakHour Cell!"
+                ProcessContractHours ws
+                On Error GoTo 0
+                Application.EnableEvents = True
+            Else
+                For Each cell In ws.Range("K2:K32")
+                    If cell.Value * 24 > 6 Then
+                        cell.Offset(0, 1).Value = ws.Range("B8") / 24
+                    ElseIf cell.Value = "" Then
+                        cell.Offset(0, 1).Value = ""
+                    Else
+                        cell.Offset(0, 1).Value = 0
+                    End If
+                Next cell
+                ProcessContractHours ws
+            End If
+        End If
+        
+    ElseIf Not Intersect(Target, ws.Range("B9")) Is Nothing Then
+        If Target.Cells.Count = 1 Then
+            If Not IsValue40Or44Or48(Target.Value) Then
+                'MsgBox "Please enter 40 or 44 or 48 in your ContractWorkingHours/week Cell!"
+                ProcessContractHours ws
+                On Error GoTo 0
+                Application.EnableEvents = True
+            Else
+                ws.Range("B10") = ws.Range("B9") / 5
+                ProcessContractHours ws
+            End If
+        End If
+    End If
+    
+    ProcessContractHours ws
+    Application.EnableEvents = True
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "You might have entered an incorrect value in Cell:" & Target.Address
+    MsgBox ErrorMessage, vbExclamation, "Input Error"
+    Application.EnableEvents = True
+    ws.Protect "123456", UserInterfaceOnly:=True
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>

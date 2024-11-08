@@ -1,0 +1,168 @@
+'Public CalendarModified As Boolean
+
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+Sub CopyCalendarColumnsToMonthsWithCustomFormat()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    MsgBox "Updating all Sheets of this excel!"
+    
+    Dim i As Integer
+    Dim row As Integer
+    Dim targetSheet As Worksheet
+    Dim sourceSheet As Worksheet
+    
+    ' Set the Calendar sheet as the source sheet
+    Set sourceSheet = Sheets("Calendar")
+    
+    ' Array of month sheet names (Jan to Dec)
+    Dim monthNames As Variant
+    monthNames = Array("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    '"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    
+    ' Loop through the 12 columns in Calendar sheet (B to M)
+    For i = 1 To 12
+        ' Set the target sheet based on the month name
+        Set targetSheet = Sheets(monthNames(i - 1))
+        
+        targetSheet.Range("A3").Value = sourceSheet.Range("N10").Value
+        targetSheet.Range("B3").Value = sourceSheet.Range("O10").Value
+        targetSheet.Range("C3").Value = sourceSheet.Range("P10").Value
+        targetSheet.Range("B4").Value = sourceSheet.Range("O11").Value
+        targetSheet.Range("B5").Value = sourceSheet.Range("O12").Value
+        targetSheet.Range("B6").Value = sourceSheet.Range("O13").Value
+        targetSheet.Range("B7").Value = sourceSheet.Range("O14").Value
+        targetSheet.Range("B8").Value = sourceSheet.Range("O15").Value
+        targetSheet.Range("B9").Value = sourceSheet.Range("O16").Value
+        
+        targetSheet.Range("F1").Interior.Color = sourceSheet.Cells(2, i + 1).Interior.Color
+        targetSheet.Range("F1").Value = sourceSheet.Cells(2, i + 1).Value
+        ' Loop through rows 3 to 33 in Calendar sheet and rows 2 to 32 in the target sheet
+        For row = 3 To 33
+            ' MsgBox "Operating on sheet:" & monthNames(i - 1)
+            ' Copy the value and format from Calendar to the corresponding month sheet's G column (column 7)
+            targetSheet.Cells(row - 1, 7).Value = sourceSheet.Cells(row, i + 1).Value
+            targetSheet.Cells(row - 1, 7).Interior.Color = sourceSheet.Cells(row, i + 1).Interior.Color
+            targetSheet.Cells(row - 1, 7).Font.Color = sourceSheet.Cells(row, i + 1).Font.Color
+            targetSheet.Cells(row - 1, 8).ClearContents
+            targetSheet.Cells(row - 1, 13).ClearContents
+            'targetSheet.Cells(row - 1, 7).HorizontalAlignment = sourceSheet.Cells(row, i + 1).HorizontalAlignment
+            'targetSheet.Cells(row - 1, 7).VerticalAlignment = sourceSheet.Cells(row, i + 1).VerticalAlignment
+            'targetSheet.Cells(row - 1, 7).Font.Bold = sourceSheet.Cells(row, i + 1).Font.Bold
+
+            ' If not empty, copy the corresponding date from A3:A33 to F2:F32
+            If sourceSheet.Cells(row, i + 1).Value <> "" Then
+                targetSheet.Cells(row - 1, 6).Value = sourceSheet.Cells(row, 1).Value
+                targetSheet.Cells(row - 1, 6).Interior.Color = sourceSheet.Cells(row, 1).Interior.Color
+                targetSheet.Cells(row - 1, 6).Font.Color = sourceSheet.Cells(row, 1).Font.Color
+                'targetSheet.Cells(row - 1, 6).HorizontalAlignment = sourceSheet.Cells(row, 1).HorizontalAlignment
+                'targetSheet.Cells(row - 1, 6).VerticalAlignment = sourceSheet.Cells(row, 1).VerticalAlignment
+                'targetSheet.Cells(row - 1, 6).Font.Bold = sourceSheet.Cells(row, 1).Font.Bold
+                'targetSheet.Cells(row - 1, 6).NumberFormat = sourceSheet.Cells(row, 1).NumberFormat
+                
+                ' Set the appropriate value in K column based on color
+                Select Case sourceSheet.Cells(row, i + 1).Interior.Color
+                    Case RGB(0, 112, 192): ' Weekend
+                        targetSheet.Cells(row - 1, 8).Value = "Weekend"
+                    Case RGB(192, 0, 0): ' Public holiday
+                        targetSheet.Cells(row - 1, 8).Value = "Public holiday"
+                   ' Case RGB(255, 192, 0): ' VGC 1/2 -DAY
+                   '     targetSheet.Cells(row - 1, 11).Value = "VGC 1/2 -DAY"
+                   ' Case Else: ' Work day
+                   '     targetSheet.Cells(row - 1, 11).Value = "Working day"
+                End Select
+            Else
+                ' If empty, clear the corresponding F column cell (date)
+                targetSheet.Cells(row - 1, 6).ClearContents
+                targetSheet.Cells(row - 1, 6).Interior.ColorIndex = xlNone
+                targetSheet.Cells(row - 1, 6).Font.ColorIndex = xlAutomatic
+                'targetSheet.Cells(row - 1, 6).HorizontalAlignment = xlGeneral
+                'targetSheet.Cells(row - 1, 6).VerticalAlignment = xlCenter
+                'targetSheet.Cells(row - 1, 6).Font.Bold = False
+                'targetSheet.Cells(row - 1, 6).NumberFormat = "General"
+            End If
+        Next row
+    Next i
+    
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+
+End Sub
+' This script is created by Yang Zhang an happy Intern of PTC!<(^_^)>
+
+Sub FillWeekdays()
+    Dim ws As Worksheet
+    Dim currentYear As Integer
+    Dim startDate As Date
+    Dim currentDate As Date
+    Dim dayIndex As Long
+    Dim row As Long
+    Dim col As Long
+    Dim daysInMonth As Integer
+    Dim yearPattern As String
+    Dim regEx As Object
+    Dim matches As Object
+    Dim match As Variant
+    
+    ' Set the worksheet
+    Set ws = ThisWorkbook.Sheets("Calendar")
+    
+    ' Extract the year from A1 cell
+    yearPattern = "\b\d{4}\b" ' Regular expression pattern to match a four-digit year
+    Set regEx = CreateObject("VBScript.RegExp")
+    With regEx
+        .Global = True
+        .IgnoreCase = True
+        .Pattern = yearPattern
+    End With
+    
+    ' Get the text from A1 cell
+    Dim cellText As String
+    cellText = ws.Range("A1").Value
+    
+    ' Find matches
+    Set matches = regEx.Execute(cellText)
+    
+    ' Check if a match is found
+    If matches.Count > 0 Then
+        currentYear = CInt(matches(0).Value)
+    Else
+        MsgBox "No valid year found in A1 cell.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Set the start date to January 1st of the extracted year
+    startDate = DateSerial(currentYear, 1, 1)
+    
+    ' Initialize the date index
+    dayIndex = 0
+    
+    ' Loop through each column (month) from B to M
+    For col = 2 To 13
+        ' Calculate the number of days in the current month
+        daysInMonth = Day(DateSerial(currentYear, col, 0))
+        
+        ' Loop through each row (day) from 3 to 33
+        For row = 3 To 33
+            ' Check if the row number is within the valid range for the current month
+            If dayIndex < daysInMonth Then
+                ' Calculate the current date
+                currentDate = DateSerial(currentYear, col - 1, dayIndex + 1)
+                
+                ' Fill in the weekday
+                ws.Cells(row, col).Value = Format(currentDate, "ddd")
+                
+                ' Update the date index
+                dayIndex = dayIndex + 1
+            Else
+                ' If the row number exceeds the number of days in the month, clear the cell
+                ws.Cells(row, col).ClearContents
+            End If
+            If ws.Cells(row, col).Value = "Sat" Or ws.Cells(row, col).Value = "Sun" Then
+                ws.Cells(row, col).Interior.Color = RGB(0, 112, 192)
+            End If
+        Next row
+        
+        ' Reset the date index for the next month
+        dayIndex = 0
+    Next col
+End Sub
